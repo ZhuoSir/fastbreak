@@ -49,6 +49,12 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
         this.thresholdWindow = thresholdWindow;
     }
 
+    @Override
+    public boolean isDisabled() {
+        return currentState().equals(CircuitBreakerState.OPEN)
+                && !shouldAttemptReset();
+    }
+
     public void successfulCall() {
         if (currentState != CLOSED) {
             stateChanged(currentState, CLOSED);
@@ -66,20 +72,28 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
             // 说明是第一次失败，所以将最后一次失败时间戳更新为当前；
             lastFailTimeStamp = currentTimeStamp;
         } else {
-            // 不是第一次失败，需要和上次失败时间戳比较
-            // 如果两次时间间隔超过了thresholdWindow，那么不需要操作，将failTimes归零；
-            // 如果两次时间间隔没有超过thresholdWindow，那么需要判断当前失败数是否超过了tripThreshold；
-            // 如果当前失败数是否超过了tripThreshold，就要修改当前状态为OPEN；
-            int cutoffThreshold = (int) (currentTimeStamp.getTime() - lastFailTimeStamp.getTime()) / 1000;
-            if (cutoffThreshold < thresholdWindow) {
-                if (failTimesValue < tripThreshold
-                        && (currentState == CLOSED || currentState == HALFOPEN)) {
-                    stateChanged(currentState, OPEN);
-                    tripTimeStamp = currentTimeStamp;
+
+            if (currentState == CLOSED) {
+                // 不是第一次失败，需要和上次失败时间戳比较
+                // 如果两次时间间隔超过了thresholdWindow，那么不需要操作，将failTimes归零；
+                // 如果两次时间间隔没有超过thresholdWindow，那么需要判断当前失败数是否超过了tripThreshold；
+                // 如果当前失败数是否超过了tripThreshold，就要修改当前状态为OPEN；
+                int cutoffThreshold = (int) (currentTimeStamp.getTime() - lastFailTimeStamp.getTime()) / 1000;
+                if (cutoffThreshold < thresholdWindow) {
+                    if (failTimesValue < tripThreshold
+                            && (currentState == CLOSED || currentState == HALFOPEN)) {
+                        stateChanged(currentState, OPEN);
+                        tripTimeStamp = currentTimeStamp;
+                    }
+                } else {
+                    failTimes.set(0);
                 }
-            } else {
-                failTimes.set(0);
             }
+
+            else if (currentState == HALFOPEN) {
+
+            }
+
         }
     }
 
@@ -89,7 +103,7 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
     }
 
     private void log(Exception e) {
-
+        log.error(e);
     }
 
     public CircuitBreakerState currentState() {
@@ -100,6 +114,9 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
         if (currentState != OPEN)
             return false;
 
+        // 判断当前的时间是否已经超过了halfOpenTimeout;
+        // 如果超过了则修改当前状态为HALFOPEN；
+        // 允许一部分请求进入;
         Date currentTimeStamp = new Date();
         int openTime = (int) (currentTimeStamp.getTime() - lastFailTimeStamp.getTime()) / 1000;
         if (openTime >= halfOpenTimeout) {

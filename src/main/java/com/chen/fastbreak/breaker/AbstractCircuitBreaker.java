@@ -2,7 +2,6 @@ package com.chen.fastbreak.breaker;
 
 public abstract class AbstractCircuitBreaker<T> implements CircuitBreaker<T> {
 
-    CircuitBreakerState state = CircuitBreakerState.CLOSED;
 
     CircuitBreakerPolicy circuitBreakerPolicy;
 
@@ -16,8 +15,7 @@ public abstract class AbstractCircuitBreaker<T> implements CircuitBreaker<T> {
     public T execute() throws Throwable {
 
         T ret = null;
-        if (circuitBreakerPolicy.currentState().equals(CircuitBreakerState.OPEN)
-                && !circuitBreakerPolicy.shouldAttemptReset()) {
+        if (circuitBreakerPolicy.isDisabled()) {
             // 熔断器打开状态
             circuitBreakerRunner.fallBack();
         }
@@ -26,7 +24,6 @@ public abstract class AbstractCircuitBreaker<T> implements CircuitBreaker<T> {
             //执行
             ret = circuitBreakerRunner.run();
             circuitBreakerPolicy.successfulCall();
-
         } catch (Exception e) {
             circuitBreakerPolicy.unsuccessfulCall(e);
             circuitBreakerRunner.fallBack(e);

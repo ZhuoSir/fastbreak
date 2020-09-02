@@ -2,6 +2,8 @@ package com.chen.fastbreak.breaker;
 
 public interface CircuitBreakerPolicy {
 
+    boolean isDisabled();
+
     void successfulCall();
 
     void unsuccessfulCall();
