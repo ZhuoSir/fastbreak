@@ -13,7 +13,7 @@ public class BaseCircuitBreakerTest {
 
         final Calculate calculate = new Calculate();
 
-        final BaseCircuitBreaker<Integer> baseCircuitBreaker = new BaseCircuitBreaker<>(10, 50, 5, 5,new CircuitBreakerFallBack<Integer>() {
+        final BaseCircuitBreaker<Integer> baseCircuitBreaker = new BaseCircuitBreaker<>(10, 3 * 1000, 5 * 1000, 5,new CircuitBreakerFallBack<Integer>() {
             @Override
             public Integer call() throws Exception {
                 return calculate.calculate();
