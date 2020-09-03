@@ -1,4 +1,4 @@
-package com.chen.fastbreak.breaker;
+package com.chen.fastbreak;
 
 public enum  CircuitBreakerState {
     OPEN,
