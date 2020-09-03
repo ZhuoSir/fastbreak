@@ -80,9 +80,6 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
                         || (currentState == HALFOPEN && failTimesValue < thresholdInHalfOpen)) {
                     stateChanged(currentState, OPEN);
                     tripTimeStamp = currentTimeStamp;
-                    if (currentState == HALFOPEN) {
-
-                    }
                 }
             } else {
                 limiter.set(0);
