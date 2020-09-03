@@ -2,9 +2,11 @@ package com.chen.fastbreak;
 
 public class BaseCircuitBreaker<T> extends AbstractCircuitBreaker<T> {
 
-
-    public BaseCircuitBreaker(CircuitBreakerConfig circuitBreakerConfig,
-                              CircuitBreakerRunner<T> circuitBreakerRunner) {
-        super(new BaseCircuitBreakerPolicy(circuitBreakerConfig), circuitBreakerRunner);
+    public BaseCircuitBreaker(int tripThreshold,
+                              int thresholdWindow,
+                              int halfOpenTimeout,
+                              int succThresholdInHalfOpen,
+                              CircuitBreakerFallBack<T> circuitBreakerFallBack) {
+        super(new BaseCircuitBreakerPolicy(tripThreshold, thresholdWindow, halfOpenTimeout, succThresholdInHalfOpen), circuitBreakerFallBack);
     }
 }

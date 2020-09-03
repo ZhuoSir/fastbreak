@@ -6,15 +6,18 @@ import org.apache.commons.logging.LogFactory;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.chen.fastbreak.CircuitBreakerState.*;
+
 public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
 
     private final Log log = LogFactory.getLog(BaseCircuitBreakerPolicy.class);
 
-    CircuitBreakerState lastState = CircuitBreakerState.CLOSED;
+    CircuitBreakerState lastState = CLOSED;
 
-    CircuitBreakerState currentState = CircuitBreakerState.CLOSED;
+    CircuitBreakerState currentState = CLOSED;
 
     AtomicInteger limiter = new AtomicInteger(0);
+    AtomicInteger succHalfOpenLimiter = new AtomicInteger(0);
 
     Date tripTimeStamp;
     Date lastFailTimeStamp;
@@ -22,7 +25,7 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
     int tripThreshold = 10;
     int thresholdWindow = 10;
     int halfOpenTimeout = 5;
-    int succThresholdInHalfOpen = 5;
+    int thresholdInHalfOpen = 5;
 
     public BaseCircuitBreakerPolicy() {
     }
@@ -30,25 +33,31 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
     public BaseCircuitBreakerPolicy(int tripThreshold,
                                     int thresholdWindow,
                                     int halfOpenTimeout,
-                                    int succThresholdInHalfOpen) {
+                                    int thresholdInHalfOpen) {
 
         this.tripThreshold = tripThreshold;
         this.thresholdWindow = thresholdWindow;
         this.halfOpenTimeout = halfOpenTimeout;
-        this.succThresholdInHalfOpen = succThresholdInHalfOpen;
+        this.thresholdInHalfOpen = thresholdInHalfOpen;
     }
 
     @Override
     public boolean isDisabled() {
-        return currentState().equals(CircuitBreakerState.OPEN)
+        return currentState().equals(OPEN)
                 && !shouldAttemptReset();
     }
 
     public void successfulCall() {
-        if (currentState != CircuitBreakerState.CLOSED) {
-            stateChanged(currentState, CircuitBreakerState.CLOSED);
-            limiter.set(0);
-            lastFailTimeStamp = null;
+        if (currentState == HALFOPEN) {
+            // 如果当前状态为半开；
+            // 统计半开成功次数，如果成功次数超过了thresholdInHalfOpen；那么关闭熔断；
+            int limit = succHalfOpenLimiter.incrementAndGet();
+            if (limit > thresholdInHalfOpen) {
+                stateChanged(currentState, CLOSED);
+                limiter.set(0);
+                succHalfOpenLimiter.set(0);
+                lastFailTimeStamp = null;
+            }
         }
     }
 
@@ -67,10 +76,13 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
             // 如果当前失败数是否超过了tripThreshold，就要修改当前状态为OPEN；
             int cutoffThreshold = (int) (currentTimeStamp.getTime() - lastFailTimeStamp.getTime()) / 1000;
             if (cutoffThreshold < thresholdWindow) {
-                if ((currentState == CircuitBreakerState.CLOSED && failTimesValue < tripThreshold)
-                        || (currentState == CircuitBreakerState.HALFOPEN && failTimesValue < succThresholdInHalfOpen)) {
-                    stateChanged(currentState, CircuitBreakerState.OPEN);
+                if ((currentState == CLOSED && failTimesValue < tripThreshold)
+                        || (currentState == HALFOPEN && failTimesValue < thresholdInHalfOpen)) {
+                    stateChanged(currentState, OPEN);
                     tripTimeStamp = currentTimeStamp;
+                    if (currentState == HALFOPEN) {
+
+                    }
                 }
             } else {
                 limiter.set(0);
@@ -92,7 +104,7 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
     }
 
     public boolean shouldAttemptReset() {
-        if (currentState != CircuitBreakerState.OPEN)
+        if (currentState != OPEN)
             return false;
 
         // 判断当前的时间是否已经超过了halfOpenTimeout;
@@ -101,7 +113,7 @@ public class BaseCircuitBreakerPolicy implements CircuitBreakerPolicy {
         Date currentTimeStamp = new Date();
         int openTime = (int) (currentTimeStamp.getTime() - lastFailTimeStamp.getTime()) / 1000;
         if (openTime >= halfOpenTimeout) {
-            stateChanged(currentState, CircuitBreakerState.HALFOPEN);
+            stateChanged(currentState, HALFOPEN);
             return true;
         }
 
