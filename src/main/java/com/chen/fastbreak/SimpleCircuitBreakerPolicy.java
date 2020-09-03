@@ -4,10 +4,15 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.chen.fastbreak.CircuitBreakerState.*;
+import static com.chen.fastbreak.CircuitBreakerState.CLOSED;
+import static com.chen.fastbreak.CircuitBreakerState.OPEN;
 
+/**
+ * 简易式熔断器代理，
+ *
+ *
+ * */
 public class SimpleCircuitBreakerPolicy implements CircuitBreakerPolicy {
 
     private CircuitBreakerState currentState = CLOSED;
@@ -15,10 +20,24 @@ public class SimpleCircuitBreakerPolicy implements CircuitBreakerPolicy {
 
     private Deque<Integer> deque = new ConcurrentLinkedDeque<>();
 
+    /**
+     * 熔断阈值，当在thresholdWindow频次内，
+     * 达到这个阈值，则触发熔断
+     *
+     * */
     private int tripThreshold = 10;
 
+    /**
+     * 熔断范围阈值，在这个频次范围内，
+     * 达到tripThreshold，则触发熔断；
+     *
+     * */
     private int thresholdWindow = 50;
 
+    /**
+     * 熔断超时时间，当熔断器为OPEN状态，达到这个时间则改为CLOSED；
+     *
+     * */
     private int openTimeOut = 10 * 6000;
 
     private Date lastOpenTimeStamp = null;
@@ -100,7 +119,5 @@ public class SimpleCircuitBreakerPolicy implements CircuitBreakerPolicy {
     public void stateChanged(CircuitBreakerState oldState, CircuitBreakerState newState) {
         lastState = oldState;
         currentState = newState;
-//        log.info("The current state changed from " + oldState + " to " + newState);
-        System.out.println("The current state changed from " + oldState + " to " + newState);
     }
 }
